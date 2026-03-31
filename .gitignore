@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+*.spec.bak
+
+# macOS
+.DS_Store
+*.swp
+*.swo
+
+# Xcode
+.build/
+DerivedData/
+xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# PyInstaller
+installer_output/
+
+# Windows installer generated files
+windows_installer/screendraw.ico
+windows_installer/file_version_info.txt
+windows_installer/__pycache__/
+
+# IDE
+.idea/
+.vscode/
+*.code-workspace

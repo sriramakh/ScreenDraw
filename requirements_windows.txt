@@ -1,0 +1,14 @@
+# ScreenDraw for Windows - Dependencies
+# Install with: pip install -r requirements_windows.txt
+
+pillow>=10.0.0
+pystray>=0.19.0
+keyboard>=0.13.5
+pyautogui>=0.9.54
+
+# Optional - for screen recording:
+opencv-python>=4.8.0
+numpy>=1.24.0
+
+# Optional - for clipboard screenshot support:
+pywin32>=306
