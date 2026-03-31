@@ -15,6 +15,11 @@ class DrawingView: NSView {
     private var cursorPoint: CGPoint?
     private var fadeTimer: Timer?
 
+    // Trackpad draw mode: 1 finger = draw, 2 fingers = move cursor only
+    var trackpadDrawMode = false
+    private var trackpadTouchCount = 0
+    private var isTrackpadDrawing = false
+
     // Spotlight
     var spotlightEnabled = false
     var spotlightRadius: CGFloat = spotlightRadiusDefault
@@ -47,6 +52,8 @@ class DrawingView: NSView {
     private func setupView() {
         wantsLayer = true
         layer?.backgroundColor = NSColor.clear.cgColor
+        // Enable trackpad (indirect) touch events for trackpad draw mode
+        allowedTouchTypes = [.indirect]
     }
 
     // MARK: - Drawing
@@ -235,12 +242,91 @@ class DrawingView: NSView {
         super.keyDown(with: event)
     }
 
+    // MARK: - Trackpad Touch Events
+
+    override func touchesBegan(with event: NSEvent) {
+        guard trackpadDrawMode && isDrawingEnabled else {
+            super.touchesBegan(with: event)
+            return
+        }
+        trackpadTouchCount = event.touches(matching: .touching, in: self).count
+        if trackpadTouchCount == 1 && !isTrackpadDrawing {
+            // Single finger: begin drawing at current cursor position
+            let point = currentCursorPoint(from: event)
+            if engine.currentTool == .text {
+                onTextRequested?(point)
+            } else {
+                let pressure = event.pressure > 0 ? CGFloat(event.pressure) : 1.0
+                engine.beginStroke(at: point, pressure: pressure)
+                isTrackpadDrawing = true
+                needsDisplay = true
+            }
+        } else if trackpadTouchCount >= 2 && isTrackpadDrawing {
+            // Second finger added: end the current stroke
+            finishTrackpadStroke()
+        }
+    }
+
+    override func touchesMoved(with event: NSEvent) {
+        guard trackpadDrawMode && isDrawingEnabled else {
+            super.touchesMoved(with: event)
+            return
+        }
+        trackpadTouchCount = event.touches(matching: .touching, in: self).count
+    }
+
+    override func touchesEnded(with event: NSEvent) {
+        guard trackpadDrawMode && isDrawingEnabled else {
+            super.touchesEnded(with: event)
+            return
+        }
+        trackpadTouchCount = event.touches(matching: .touching, in: self).count
+        if trackpadTouchCount == 0 && isTrackpadDrawing {
+            finishTrackpadStroke()
+        }
+    }
+
+    override func touchesCancelled(with event: NSEvent) {
+        guard trackpadDrawMode && isDrawingEnabled else {
+            super.touchesCancelled(with: event)
+            return
+        }
+        trackpadTouchCount = 0
+        if isTrackpadDrawing {
+            finishTrackpadStroke()
+        }
+    }
+
+    private func finishTrackpadStroke() {
+        let wasFading = engine.currentStroke?.tool == .fadingInk
+        _ = engine.endStroke()
+        if wasFading { startFadeTimer() }
+        isTrackpadDrawing = false
+        needsDisplay = true
+        onStrokeChanged?()
+    }
+
+    private func currentCursorPoint(from event: NSEvent) -> CGPoint {
+        return convert(event.locationInWindow, from: nil)
+    }
+
     // MARK: - Mouse Events
 
     override func mouseMoved(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+
+        // Trackpad draw mode: 1 finger touching = draw at cursor
+        if trackpadDrawMode && isDrawingEnabled && isTrackpadDrawing && trackpadTouchCount == 1 {
+            let pressure = event.pressure > 0 ? CGFloat(event.pressure) : 1.0
+            engine.continueStroke(to: point, pressure: pressure)
+            cursorPoint = point
+            needsDisplay = true
+            return
+        }
+
         let needsTrack = cursorHighlightEnabled || spotlightEnabled || zoomEnabled || laserPointerEnabled
         if needsTrack {
-            cursorPoint = convert(event.locationInWindow, from: nil)
+            cursorPoint = point
             needsDisplay = true
         }
     }
@@ -255,6 +341,11 @@ class DrawingView: NSView {
         if clickAnimationsEnabled {
             clickAnims.append(ClickAnimation(point: point, startTime: Date(), isRightClick: false))
             startAnimTimer()
+        }
+
+        // In trackpad draw mode, clicks are ignored for drawing (touch handles it)
+        if trackpadDrawMode && isDrawingEnabled {
+            return
         }
 
         guard isDrawingEnabled else {
@@ -281,6 +372,9 @@ class DrawingView: NSView {
     }
 
     override func mouseDragged(with event: NSEvent) {
+        // In trackpad draw mode, drawing is handled via touch + mouseMoved
+        if trackpadDrawMode && isDrawingEnabled { return }
+
         guard isDrawingEnabled else {
             super.mouseDragged(with: event)
             return
@@ -298,6 +392,9 @@ class DrawingView: NSView {
     }
 
     override func mouseUp(with event: NSEvent) {
+        // In trackpad draw mode, stroke end is handled by touchesEnded
+        if trackpadDrawMode && isDrawingEnabled { return }
+
         guard isDrawingEnabled else {
             super.mouseUp(with: event)
             return

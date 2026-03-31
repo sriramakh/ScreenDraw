@@ -218,6 +218,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         case "k":
             toggleClickAnimations()
             return true
+        case "t":
+            toggleTrackpadDrawMode()
+            return true
         case "r":
             toggleRecording()
             return true
@@ -341,6 +344,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let enabled = !drawingView.clickAnimationsEnabled
         drawingView.clickAnimationsEnabled = enabled
         toolbarPanel.updateClickAnimButton(isEnabled: enabled)
+    }
+
+    // MARK: - Trackpad Draw Mode
+
+    private func toggleTrackpadDrawMode() {
+        let enabled = !drawingView.trackpadDrawMode
+        drawingView.trackpadDrawMode = enabled
+        toolbarPanel.updateTrackpadDrawButton(isEnabled: enabled)
     }
 
     // MARK: - Whiteboard / Blackboard
@@ -557,6 +568,7 @@ extension AppDelegate: ToolbarPanelDelegate {
     func toolbarDidRequestZoom() { toggleZoom() }
     func toolbarDidRequestLaser() { toggleLaserPointer() }
     func toolbarDidRequestClickAnim() { toggleClickAnimations() }
+    func toolbarDidRequestTrackpadDraw() { toggleTrackpadDrawMode() }
     func toolbarDidRequestRecord() { toggleRecording() }
     func toolbarDidRequestMinimize() { minimizeApp() }
     func toolbarDidRequestQuit() { quitApp() }

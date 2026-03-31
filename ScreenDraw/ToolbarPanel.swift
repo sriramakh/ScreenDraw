@@ -18,6 +18,7 @@ protocol ToolbarPanelDelegate: AnyObject {
     func toolbarDidRequestLaser()
     func toolbarDidRequestClickAnim()
     func toolbarDidRequestRecord()
+    func toolbarDidRequestTrackpadDraw()
     func toolbarDidRequestMinimize()
     func toolbarDidRequestQuit()
 }
@@ -38,6 +39,7 @@ class ToolbarPanel: NSPanel {
     private var zoomButton: NSButton!
     private var laserButton: NSButton!
     private var clickAnimButton: NSButton!
+    private var trackpadDrawButton: NSButton!
     private var recordButton: NSButton!
 
     private var selectedToolIndex = 0
@@ -219,6 +221,11 @@ class ToolbarPanel: NSPanel {
         stackView.addArrangedSubview(clickAnimButton)
         addConstraintsForButton(clickAnimButton)
 
+        trackpadDrawButton = makeSymbolButton(symbolName: "hand.draw", action: #selector(trackpadDrawAction), tooltip: "Trackpad Draw (T): 1 finger=draw, 2 fingers=move")
+        trackpadDrawButton.contentTintColor = .systemCyan
+        stackView.addArrangedSubview(trackpadDrawButton)
+        addConstraintsForButton(trackpadDrawButton)
+
         stackView.addArrangedSubview(makeSeparator())
 
         // Action buttons
@@ -398,6 +405,15 @@ class ToolbarPanel: NSPanel {
             : NSColor.clear.cgColor
     }
 
+    func updateTrackpadDrawButton(isEnabled: Bool) {
+        trackpadDrawButton.layer?.backgroundColor = isEnabled
+            ? NSColor.systemCyan.withAlphaComponent(0.3).cgColor
+            : NSColor.clear.cgColor
+        trackpadDrawButton.toolTip = isEnabled
+            ? "Trackpad Draw ON (T): 1 finger=draw, 2 fingers=move"
+            : "Trackpad Draw OFF (T)"
+    }
+
     func updateCursorShapeButton(shapeName: String) {
         cursorShapeButton.toolTip = "Cursor Shape: \(shapeName) (Shift+H)"
     }
@@ -429,6 +445,7 @@ class ToolbarPanel: NSPanel {
     @objc private func zoomAction() { toolbarDelegate?.toolbarDidRequestZoom() }
     @objc private func laserAction() { toolbarDelegate?.toolbarDidRequestLaser() }
     @objc private func clickAnimAction() { toolbarDelegate?.toolbarDidRequestClickAnim() }
+    @objc private func trackpadDrawAction() { toolbarDelegate?.toolbarDidRequestTrackpadDraw() }
     @objc private func undoAction() { toolbarDelegate?.toolbarDidRequestUndo() }
     @objc private func redoAction() { toolbarDelegate?.toolbarDidRequestRedo() }
     @objc private func clearAction() { toolbarDelegate?.toolbarDidRequestClear() }
