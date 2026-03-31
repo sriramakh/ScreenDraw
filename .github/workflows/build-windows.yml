@@ -1,0 +1,63 @@
+name: Build Windows
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller pillow
+          pip install -r requirements_windows.txt
+
+      - name: Generate icon
+        run: python windows_installer/generate_icon.py
+
+      - name: Generate version info
+        run: python windows_installer/version_info.py
+
+      - name: Build with PyInstaller
+        run: pyinstaller --clean --noconfirm windows_installer/ScreenDraw.spec
+
+      - name: Copy icon to dist
+        run: copy windows_installer\screendraw.ico dist\ScreenDraw\
+        shell: cmd
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Read version
+        id: version
+        run: |
+          $v = Get-Content VERSION -Raw
+          echo "version=$($v.Trim())" >> $env:GITHUB_OUTPUT
+        shell: pwsh
+
+      - name: Build installer
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" windows_installer\ScreenDraw_Installer.iss
+        shell: pwsh
+
+      - name: Upload standalone exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScreenDraw-Windows-Portable
+          path: dist/ScreenDraw/
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScreenDraw-Windows-Installer
+          path: installer_output/ScreenDraw_Setup_*.exe

@@ -16,9 +16,9 @@
 ; Or just run: build_installer.bat (automates everything)
 
 #define MyAppName "ScreenDraw"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion GetStringFileInfo("..\dist\ScreenDraw\ScreenDraw.exe", "ProductVersion")
 #define MyAppPublisher "ScreenDraw"
-#define MyAppURL "https://github.com/screendraw"
+#define MyAppURL "https://github.com/sriramakh/ScreenDraw"
 #define MyAppExeName "ScreenDraw.exe"
 #define MyAppDescription "Live Screen Drawing & Annotation Tool"
 

@@ -1,0 +1,52 @@
+name: Build macOS
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  build-macos:
+    runs-on: macos-14  # Apple Silicon runner
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python (for icon generation)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Pillow
+        run: pip3 install pillow
+
+      - name: Generate app icon
+        run: python3 scripts/generate_macos_icon.py
+
+      - name: Read version
+        id: version
+        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Build universal binary and DMG
+        run: ./build.sh
+        env:
+          SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY || '-' }}
+
+      - name: Notarize (if credentials available)
+        if: ${{ secrets.APPLE_ID != '' }}
+        run: |
+          xcrun notarytool submit build/ScreenDraw_v${{ steps.version.outputs.version }}_macOS.dmg \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APP_PASSWORD" --wait
+          xcrun stapler staple build/ScreenDraw_v${{ steps.version.outputs.version }}_macOS.dmg
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScreenDraw-macOS
+          path: build/ScreenDraw_v*_macOS.dmg

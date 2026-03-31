@@ -2,13 +2,31 @@
 Generate a Windows version info file for PyInstaller.
 This embeds version metadata into the .exe (visible in Properties dialog).
 
+Reads version from the VERSION file in the project root.
+
 Usage: python version_info.py
 Output: file_version_info.txt (used by PyInstaller --version-file)
 """
 
 import os
 
-VERSION = "1.0.0.0"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(SCRIPT_DIR)
+
+# Read version from VERSION file
+version_file = os.path.join(ROOT_DIR, "VERSION")
+if os.path.exists(version_file):
+    VERSION = open(version_file).read().strip()
+else:
+    VERSION = "1.0.0"
+
+# Ensure 4-part version for Windows
+parts = VERSION.split(".")
+while len(parts) < 4:
+    parts.append("0")
+VERSION_4 = ".".join(parts[:4])
+VERSION_TUPLE = ", ".join(parts[:4])
+
 COMPANY = "ScreenDraw"
 PRODUCT = "ScreenDraw"
 DESCRIPTION = "Live Screen Drawing & Annotation Tool"
@@ -21,8 +39,8 @@ template = f'''# UTF-8
 # http://msdn.microsoft.com/en-us/library/ms646997.aspx
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(1, 0, 0, 0),
-    prodvers=(1, 0, 0, 0),
+    filevers=({VERSION_TUPLE}),
+    prodvers=({VERSION_TUPLE}),
     mask=0x3f,
     flags=0x0,
     OS=0x40004,
@@ -38,12 +56,12 @@ VSVersionInfo(
           [
             StringStruct(u'CompanyName', u'{COMPANY}'),
             StringStruct(u'FileDescription', u'{DESCRIPTION}'),
-            StringStruct(u'FileVersion', u'{VERSION}'),
+            StringStruct(u'FileVersion', u'{VERSION_4}'),
             StringStruct(u'InternalName', u'{PRODUCT}'),
             StringStruct(u'LegalCopyright', u'{COPYRIGHT}'),
             StringStruct(u'OriginalFilename', u'{ORIGINAL_FILENAME}'),
             StringStruct(u'ProductName', u'{PRODUCT}'),
-            StringStruct(u'ProductVersion', u'{VERSION}'),
+            StringStruct(u'ProductVersion', u'{VERSION_4}'),
           ]
         )
       ]
@@ -54,7 +72,7 @@ VSVersionInfo(
 '''
 
 def generate():
-    output_path = os.path.join(os.path.dirname(__file__), "file_version_info.txt")
+    output_path = os.path.join(SCRIPT_DIR, "file_version_info.txt")
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(template)
     print(f"Version info saved to: {output_path}")

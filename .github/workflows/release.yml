@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    uses: ./.github/workflows/build-macos.yml
+    secrets: inherit
+
+  build-windows:
+    uses: ./.github/workflows/build-windows.yml
+    secrets: inherit
+
+  create-release:
+    needs: [build-macos, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version
+        id: version
+        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ScreenDraw-macOS
+          path: release-assets/
+
+      - name: Download Windows installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ScreenDraw-Windows-Installer
+          path: release-assets/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ScreenDraw v${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: release-assets/*
+          body: |
+            ## ScreenDraw v${{ steps.version.outputs.version }}
+
+            ### Downloads
+
+            | Platform | File | Description |
+            |----------|------|-------------|
+            | macOS | `ScreenDraw_v${{ steps.version.outputs.version }}_macOS.dmg` | Open DMG, drag to Applications |
+            | Windows | `ScreenDraw_Setup_${{ steps.version.outputs.version }}.exe` | Run installer, follow prompts |
+
+            ### macOS Installation
+            1. Download the `.dmg` file
+            2. Open it and drag **ScreenDraw** to **Applications**
+            3. Right-click the app and select **Open** (first time only, to bypass Gatekeeper)
+            4. Grant Screen Recording permission when prompted
+
+            ### Windows Installation
+            1. Download the `.exe` installer
+            2. Run it and follow the setup wizard
+            3. Launch ScreenDraw from the Start Menu
+            4. Run as Administrator for global hotkey support
