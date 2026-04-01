@@ -42,7 +42,10 @@ Available for **macOS** (Python + Swift) and **Windows** (Python).
 | Key | Action | Windows |
 |-----|--------|---------|
 | `D` | Toggle drawing on/off | `D` |
-| `1`–`9` | Select tool | `1`–`9` |
+| `0` | Pointer (click-through, use other apps) | `0` |
+| `1`–`9` | Select drawing tool | `1`–`9` |
+| `Tab` | Next tool | `Tab` |
+| `Shift+Tab` | Previous tool | `Shift+Tab` |
 | `S` | Screenshot | `S` |
 | `W` | Toggle Whiteboard | `W` |
 | `B` | Toggle Blackboard | `B` |

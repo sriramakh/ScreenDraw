@@ -173,6 +173,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return true
         }
 
+        // Tab / Shift+Tab = cycle tools
+        if event.keyCode == 48 { // Tab
+            if modifiers == .shift {
+                cycleToolBackward()
+            } else {
+                cycleToolForward()
+            }
+            return true
+        }
+
         guard modifiers.isEmpty || modifiers == .shift else { return false }
 
         guard let chars = event.charactersIgnoringModifiers?.lowercased() else { return false }
@@ -181,15 +191,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         case "d":
             toggleDrawingMode()
             return true
-        case "1": setTool(.pen, index: 0); return true
-        case "2": setTool(.highlighter, index: 1); return true
-        case "3": setTool(.line, index: 2); return true
-        case "4": setTool(.arrow, index: 3); return true
-        case "5": setTool(.rectangle, index: 4); return true
-        case "6": setTool(.circle, index: 5); return true
-        case "7": setTool(.text, index: 6); return true
-        case "8": setTool(.eraser, index: 7); return true
-        case "9": setTool(.fadingInk, index: 8); return true
+        case "0": setTool(.pointer, index: 0); return true
+        case "1": setTool(.pen, index: 1); return true
+        case "2": setTool(.highlighter, index: 2); return true
+        case "3": setTool(.line, index: 3); return true
+        case "4": setTool(.arrow, index: 4); return true
+        case "5": setTool(.rectangle, index: 5); return true
+        case "6": setTool(.circle, index: 6); return true
+        case "7": setTool(.text, index: 7); return true
+        case "8": setTool(.eraser, index: 8); return true
+        case "9": setTool(.fadingInk, index: 9); return true
         case "s":
             activateScreenshotMode()
             return true
@@ -246,6 +257,36 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func setTool(_ tool: DrawingTool, index: Int) {
         drawingView.engine.currentTool = tool
         toolbarPanel.selectTool(at: index)
+
+        // Pointer tool = click-through (user can interact with other apps)
+        // Any drawing tool = overlay intercepts mouse events
+        if tool.isDrawingTool {
+            isDrawingActive = true
+            drawingView.isDrawingEnabled = true
+            overlayWindow.ignoresMouseEvents = false
+            toolbarPanel.updateDrawingToggle(isEnabled: true)
+            NSCursor.crosshair.set()
+        } else {
+            isDrawingActive = false
+            drawingView.isDrawingEnabled = false
+            overlayWindow.ignoresMouseEvents = true
+            toolbarPanel.updateDrawingToggle(isEnabled: false)
+            NSCursor.arrow.set()
+        }
+    }
+
+    private func cycleToolForward() {
+        let tools = DrawingTool.allDrawingTools
+        let currentIndex = tools.firstIndex(of: drawingView.engine.currentTool) ?? 0
+        let nextIndex = (currentIndex + 1) % tools.count
+        setTool(tools[nextIndex], index: nextIndex)
+    }
+
+    private func cycleToolBackward() {
+        let tools = DrawingTool.allDrawingTools
+        let currentIndex = tools.firstIndex(of: drawingView.engine.currentTool) ?? 0
+        let prevIndex = (currentIndex - 1 + tools.count) % tools.count
+        setTool(tools[prevIndex], index: prevIndex)
     }
 
     // MARK: - Drawing State
@@ -544,7 +585,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
 extension AppDelegate: ToolbarPanelDelegate {
     func toolbarDidSelectTool(_ tool: DrawingTool) {
-        drawingView.setTool(tool)
+        let tools = DrawingTool.allDrawingTools
+        let index = tools.firstIndex(of: tool) ?? 0
+        setTool(tool, index: index)
     }
 
     func toolbarDidSelectColor(_ color: NSColor) {

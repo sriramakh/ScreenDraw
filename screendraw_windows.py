@@ -43,6 +43,7 @@ dwmapi = ctypes.windll.dwmapi
 # Drawing Tool Types
 # ============================================================
 
+TOOL_POINTER = "pointer"
 TOOL_PEN = "pen"
 TOOL_HIGHLIGHTER = "highlighter"
 TOOL_LINE = "line"
@@ -55,12 +56,16 @@ TOOL_FADING_INK = "fading_ink"
 TOOL_SCREENSHOT = "screenshot"
 
 ALL_TOOLS = [
-    TOOL_PEN, TOOL_HIGHLIGHTER, TOOL_LINE, TOOL_ARROW,
+    TOOL_POINTER, TOOL_PEN, TOOL_HIGHLIGHTER, TOOL_LINE, TOOL_ARROW,
     TOOL_RECTANGLE, TOOL_CIRCLE, TOOL_TEXT, TOOL_ERASER,
     TOOL_FADING_INK,
 ]
 
+def is_drawing_tool(tool):
+    return tool != TOOL_POINTER
+
 TOOL_LABELS = {
+    TOOL_POINTER: "Pointer",
     TOOL_PEN: "Pen",
     TOOL_HIGHLIGHTER: "Highlighter",
     TOOL_LINE: "Line",
@@ -74,6 +79,7 @@ TOOL_LABELS = {
 }
 
 TOOL_SHORTCUTS = {
+    TOOL_POINTER: "0",
     TOOL_PEN: "1",
     TOOL_HIGHLIGHTER: "2",
     TOOL_LINE: "3",
@@ -171,7 +177,9 @@ class DrawingEngine:
         opacity = 1.0
         line_width = self.current_line_width
 
-        if self.current_tool == TOOL_HIGHLIGHTER:
+        if self.current_tool == TOOL_POINTER:
+            return  # Pointer doesn't draw
+        elif self.current_tool == TOOL_HIGHLIGHTER:
             opacity = 0.35
             line_width = max(line_width, 20.0)
         elif self.current_tool == TOOL_ERASER:
@@ -1389,15 +1397,18 @@ class ScreenDrawApp:
             import keyboard
 
             keyboard.add_hotkey('d', lambda: self.root_after(self.toggle_drawing))
-            keyboard.add_hotkey('1', lambda: self.root_after(lambda: self.set_tool(TOOL_PEN, 0)))
-            keyboard.add_hotkey('2', lambda: self.root_after(lambda: self.set_tool(TOOL_HIGHLIGHTER, 1)))
-            keyboard.add_hotkey('3', lambda: self.root_after(lambda: self.set_tool(TOOL_LINE, 2)))
-            keyboard.add_hotkey('4', lambda: self.root_after(lambda: self.set_tool(TOOL_ARROW, 3)))
-            keyboard.add_hotkey('5', lambda: self.root_after(lambda: self.set_tool(TOOL_RECTANGLE, 4)))
-            keyboard.add_hotkey('6', lambda: self.root_after(lambda: self.set_tool(TOOL_CIRCLE, 5)))
-            keyboard.add_hotkey('7', lambda: self.root_after(lambda: self.set_tool(TOOL_TEXT, 6)))
-            keyboard.add_hotkey('8', lambda: self.root_after(lambda: self.set_tool(TOOL_ERASER, 7)))
-            keyboard.add_hotkey('9', lambda: self.root_after(lambda: self.set_tool(TOOL_FADING_INK, 8)))
+            keyboard.add_hotkey('0', lambda: self.root_after(lambda: self.set_tool(TOOL_POINTER, 0)))
+            keyboard.add_hotkey('1', lambda: self.root_after(lambda: self.set_tool(TOOL_PEN, 1)))
+            keyboard.add_hotkey('2', lambda: self.root_after(lambda: self.set_tool(TOOL_HIGHLIGHTER, 2)))
+            keyboard.add_hotkey('3', lambda: self.root_after(lambda: self.set_tool(TOOL_LINE, 3)))
+            keyboard.add_hotkey('4', lambda: self.root_after(lambda: self.set_tool(TOOL_ARROW, 4)))
+            keyboard.add_hotkey('5', lambda: self.root_after(lambda: self.set_tool(TOOL_RECTANGLE, 5)))
+            keyboard.add_hotkey('6', lambda: self.root_after(lambda: self.set_tool(TOOL_CIRCLE, 6)))
+            keyboard.add_hotkey('7', lambda: self.root_after(lambda: self.set_tool(TOOL_TEXT, 7)))
+            keyboard.add_hotkey('8', lambda: self.root_after(lambda: self.set_tool(TOOL_ERASER, 8)))
+            keyboard.add_hotkey('9', lambda: self.root_after(lambda: self.set_tool(TOOL_FADING_INK, 9)))
+            keyboard.add_hotkey('tab', lambda: self.root_after(self.cycle_tool_forward))
+            keyboard.add_hotkey('shift+tab', lambda: self.root_after(self.cycle_tool_backward))
             keyboard.add_hotkey('s', lambda: self.root_after(self.activate_screenshot_mode))
             keyboard.add_hotkey('w', lambda: self.root_after(self.toggle_whiteboard))
             keyboard.add_hotkey('b', lambda: self.root_after(self.toggle_blackboard))
@@ -1428,6 +1439,30 @@ class ScreenDrawApp:
         self.overlay.engine.current_tool = tool
         if self.toolbar:
             self.toolbar.select_tool(index)
+        # Pointer tool = click-through (user can interact with other apps)
+        # Any drawing tool = overlay intercepts mouse events
+        if is_drawing_tool(tool):
+            self.overlay.is_drawing_enabled = True
+            self.overlay.set_click_through(False)
+            if self.toolbar:
+                self.toolbar.update_drawing_toggle(True)
+        else:
+            self.overlay.is_drawing_enabled = False
+            self.overlay.set_click_through(True)
+            if self.toolbar:
+                self.toolbar.update_drawing_toggle(False)
+
+    def cycle_tool_forward(self):
+        current = self.overlay.engine.current_tool
+        idx = ALL_TOOLS.index(current) if current in ALL_TOOLS else 0
+        next_idx = (idx + 1) % len(ALL_TOOLS)
+        self.set_tool(ALL_TOOLS[next_idx], next_idx)
+
+    def cycle_tool_backward(self):
+        current = self.overlay.engine.current_tool
+        idx = ALL_TOOLS.index(current) if current in ALL_TOOLS else 0
+        prev_idx = (idx - 1) % len(ALL_TOOLS)
+        self.set_tool(ALL_TOOLS[prev_idx], prev_idx)
 
     def set_color(self, color, index):
         self.overlay.engine.current_color = color

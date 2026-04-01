@@ -70,6 +70,7 @@ _AVFoundation = objc.loadBundle(
 # Drawing Tool Types
 # ============================================================
 
+TOOL_POINTER = "pointer"
 TOOL_PEN = "pen"
 TOOL_HIGHLIGHTER = "highlighter"
 TOOL_ARROW = "arrow"
@@ -82,12 +83,16 @@ TOOL_FADING_INK = "fading_ink"
 TOOL_SCREENSHOT = "screenshot"
 
 ALL_TOOLS = [
-    TOOL_PEN, TOOL_HIGHLIGHTER, TOOL_LINE, TOOL_ARROW,
+    TOOL_POINTER, TOOL_PEN, TOOL_HIGHLIGHTER, TOOL_LINE, TOOL_ARROW,
     TOOL_RECTANGLE, TOOL_CIRCLE, TOOL_TEXT, TOOL_ERASER,
     TOOL_FADING_INK,
 ]
 
+def is_drawing_tool(tool):
+    return tool != TOOL_POINTER
+
 TOOL_LABELS = {
+    TOOL_POINTER: "Pointer",
     TOOL_PEN: "Pen",
     TOOL_HIGHLIGHTER: "Highlighter",
     TOOL_LINE: "Line",
@@ -101,6 +106,7 @@ TOOL_LABELS = {
 }
 
 TOOL_SYMBOLS = {
+    TOOL_POINTER: "cursorarrow",
     TOOL_PEN: "pencil.tip",
     TOOL_HIGHLIGHTER: "highlighter",
     TOOL_LINE: "line.diagonal",
@@ -201,7 +207,9 @@ class DrawingEngine:
         opacity = 1.0
         line_width = self.current_line_width
 
-        if self.current_tool == TOOL_HIGHLIGHTER:
+        if self.current_tool == TOOL_POINTER:
+            return  # Pointer doesn't draw
+        elif self.current_tool == TOOL_HIGHLIGHTER:
             opacity = 0.35
             line_width = max(line_width, 20.0)
         elif self.current_tool == TOOL_FADING_INK:
@@ -1612,6 +1620,14 @@ class AppDelegate(NSView):  # Using NSView as base for ObjC compatibility
             NSApp.terminate_(None)
             return True
 
+        # Tab / Shift+Tab = cycle tools
+        if event.keyCode() == 48:  # Tab key
+            if has_shift:
+                self._cycle_tool_backward()
+            else:
+                self._cycle_tool_forward()
+            return True
+
         # No modifier keys for these
         if has_cmd:
             return False
@@ -1619,32 +1635,35 @@ class AppDelegate(NSView):  # Using NSView as base for ObjC compatibility
         if chars == "d":
             self._toggle_drawing()
             return True
+        elif chars == "0":
+            self._set_tool(TOOL_POINTER, 0)
+            return True
         elif chars == "1":
-            self._set_tool(TOOL_PEN, 0)
+            self._set_tool(TOOL_PEN, 1)
             return True
         elif chars == "2":
-            self._set_tool(TOOL_HIGHLIGHTER, 1)
+            self._set_tool(TOOL_HIGHLIGHTER, 2)
             return True
         elif chars == "3":
-            self._set_tool(TOOL_LINE, 2)
+            self._set_tool(TOOL_LINE, 3)
             return True
         elif chars == "4":
-            self._set_tool(TOOL_ARROW, 3)
+            self._set_tool(TOOL_ARROW, 4)
             return True
         elif chars == "5":
-            self._set_tool(TOOL_RECTANGLE, 4)
+            self._set_tool(TOOL_RECTANGLE, 5)
             return True
         elif chars == "6":
-            self._set_tool(TOOL_CIRCLE, 5)
+            self._set_tool(TOOL_CIRCLE, 6)
             return True
         elif chars == "7":
-            self._set_tool(TOOL_TEXT, 6)
+            self._set_tool(TOOL_TEXT, 7)
             return True
         elif chars == "8":
-            self._set_tool(TOOL_ERASER, 7)
+            self._set_tool(TOOL_ERASER, 8)
             return True
         elif chars == "9":
-            self._set_tool(TOOL_FADING_INK, 8)
+            self._set_tool(TOOL_FADING_INK, 9)
             return True
         elif chars == "h":
             if has_shift:
@@ -1699,6 +1718,24 @@ class AppDelegate(NSView):  # Using NSView as base for ObjC compatibility
         if self.toolbar_panel:
             self.toolbar_panel._selected_tool_index = index
             self.toolbar_panel._update_tool_selection()
+        # Pointer tool = click-through (user can interact with other apps)
+        # Any drawing tool = overlay intercepts mouse events
+        if is_drawing_tool(tool):
+            self._activate_drawing()
+        else:
+            self._deactivate_drawing()
+
+    def _cycle_tool_forward(self):
+        current = self.drawing_view.engine.current_tool
+        idx = ALL_TOOLS.index(current) if current in ALL_TOOLS else 0
+        next_idx = (idx + 1) % len(ALL_TOOLS)
+        self._set_tool(ALL_TOOLS[next_idx], next_idx)
+
+    def _cycle_tool_backward(self):
+        current = self.drawing_view.engine.current_tool
+        idx = ALL_TOOLS.index(current) if current in ALL_TOOLS else 0
+        prev_idx = (idx - 1) % len(ALL_TOOLS)
+        self._set_tool(ALL_TOOLS[prev_idx], prev_idx)
 
     # ---- Minimize / Hide ----
 

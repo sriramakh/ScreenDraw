@@ -3,6 +3,7 @@ import Cocoa
 // MARK: - Drawing Tool Types
 
 enum DrawingTool: String, CaseIterable {
+    case pointer = "Pointer"
     case pen = "Pen"
     case highlighter = "Highlighter"
     case line = "Line"
@@ -13,10 +14,15 @@ enum DrawingTool: String, CaseIterable {
     case eraser = "Eraser"
     case fadingInk = "Fading Ink"
 
-    static let allDrawingTools: [DrawingTool] = [.pen, .highlighter, .line, .arrow, .rectangle, .circle, .text, .eraser, .fadingInk]
+    static let allDrawingTools: [DrawingTool] = [.pointer, .pen, .highlighter, .line, .arrow, .rectangle, .circle, .text, .eraser, .fadingInk]
+
+    var isDrawingTool: Bool {
+        return self != .pointer
+    }
 
     var symbolName: String {
         switch self {
+        case .pointer: return "cursorarrow"
         case .pen: return "pencil.tip"
         case .highlighter: return "highlighter"
         case .line: return "line.diagonal"
@@ -133,6 +139,8 @@ class DrawingEngine {
         var lineWidth = currentLineWidth
 
         switch currentTool {
+        case .pointer:
+            return // Pointer doesn't draw
         case .highlighter:
             opacity = 0.35
             lineWidth = max(lineWidth, 20.0)
